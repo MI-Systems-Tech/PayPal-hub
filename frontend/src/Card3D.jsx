@@ -26,7 +26,7 @@ function frontTex() {
   const bg = g.createLinearGradient(0, 0, w, h)
   bg.addColorStop(0, '#173f93'); bg.addColorStop(1, '#0a1f44')
   g.fillStyle = bg; g.fillRect(0, 0, w, h)
-  g.fillStyle = '#fff'; g.font = '700 110px "Bricolage Grotesque", Arial, sans-serif'
+  g.fillStyle = '#fff'; g.font = '700 110px "Funnel Display", Arial, sans-serif'
   g.fillText('PayPal Hub', 110, 200)
   const cx = 130, cy = 480, cw = 190, ch = 150
   const chip = g.createLinearGradient(cx, cy, cx + cw, cy + ch)
@@ -37,9 +37,9 @@ function frontTex() {
   ;[50, 100].forEach(d => { g.beginPath(); g.moveTo(cx, cy + d); g.lineTo(cx + cw, cy + d); g.stroke() })
   g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 9; g.lineCap = 'round'
   ;[34, 62, 90].forEach(r => { g.beginPath(); g.arc(440, 555, r, -0.9, 0.9); g.stroke() })
-  g.fillStyle = 'rgba(255,255,255,.92)'; g.font = '500 96px "Instrument Sans", Arial, sans-serif'
+  g.fillStyle = 'rgba(255,255,255,.92)'; g.font = '500 96px "Host Grotesk", Arial, sans-serif'
   g.fillText('\u2022\u2022\u2022\u2022  \u2022\u2022\u2022\u2022  \u2022\u2022\u2022\u2022  0000', 110, 800)
-  g.font = '500 54px "Instrument Sans", Arial, sans-serif'
+  g.font = '500 54px "Host Grotesk", Arial, sans-serif'
   g.fillText('YOUR NAME', 110, 960); g.fillText('SAMPLE CARD', w - 560, 960)
   return c
 }
@@ -49,7 +49,7 @@ function backTex() {
   g.fillStyle = '#05070d'; g.fillRect(0, 170, w, 190)
   g.fillStyle = '#e8ecf3'; g.fillRect(110, 480, w - 520, 130)
   g.fillStyle = '#fff'; g.fillRect(w - 360, 480, 250, 130)
-  g.fillStyle = 'rgba(255,255,255,.8)'; g.font = '500 48px "Instrument Sans", Arial, sans-serif'
+  g.fillStyle = 'rgba(255,255,255,.8)'; g.font = '500 48px "Host Grotesk", Arial, sans-serif'
   g.fillText('Sample card for demonstration. Not a real payment card.', 110, 900)
   return c
 }
@@ -67,7 +67,7 @@ export default function Card3D({ still }) {
     const el = box.current
     let renderer
     try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }) } catch { setFailed(true); return }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+    renderer.setPixelRatio(Math.min(devicePixelRatio, innerWidth < 700 ? 1.5 : 2))
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     el.appendChild(renderer.domElement)
     const scene = new THREE.Scene()
@@ -101,15 +101,19 @@ export default function Card3D({ still }) {
     const onMove = e => { m.x = (e.clientX / innerWidth) * 2 - 1; m.y = (e.clientY / innerHeight) * 2 - 1 }
     let visible = true, raf
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting }, { threshold: 0 }); io.observe(el)
+    const KF = [[1.3,0,1,-.45,.12],[1.6,0,1.1,-.12,.04],[-1.6,0,1.15,.5,-.25],[-2.3,1.2,.55,Math.PI,0],[1.8,0,.8,-.3,.08],[0,.5,1.1,0,.1]]
+    const pose = p => { const f = Math.min(Math.max(p, 0), 1) * (KF.length - 1), i = Math.min(Math.floor(f), KF.length - 2), t = f - i, e = t * t * (3 - 2 * t); return KF[i].map((v, k) => v + (KF[i + 1][k] - v) * e) }
+    const cp = pose(0)
     const draw = t => {
-      if (!still) {
-        cur.x += (m.x - cur.x) * 0.06; cur.y += (m.y - cur.y) * 0.06
-        const s = Math.min(scrollY / innerHeight, 1.5)
-        card.rotation.y = -0.45 + cur.x * 0.45 + s * 1.1
-        card.rotation.x = 0.12 + cur.y * 0.3 + s * 0.2
-        card.position.y = Math.sin(t / 1400) * 0.05
-        key.position.set(2 + cur.x * 5, 3 - cur.y * 4, 5)
-      } else { card.rotation.set(0.12, -0.45, 0) }
+      const doc = document.documentElement.scrollHeight - innerHeight
+      const tg = still ? pose(0) : pose(doc > 0 ? scrollY / doc : 0)
+      for (let k = 0; k < 5; k++) cp[k] += (tg[k] - cp[k]) * (still ? 1 : 0.08)
+      cur.x += (m.x - cur.x) * 0.06; cur.y += (m.y - cur.y) * 0.06
+      const nar = cam.aspect < 0.9, f = still ? 0 : 1
+      card.position.set(nar ? 0 : cp[0], (nar ? 1.1 : cp[1]) + f * Math.sin(t / 1400) * 0.05, 0)
+      card.scale.setScalar(0.05 * cp[2] * (nar ? 0.8 : 1))
+      card.rotation.set(cp[4] + f * cur.y * 0.25, cp[3] + f * cur.x * 0.35, 0)
+      key.position.set(2 + f * cur.x * 5, 3 - f * cur.y * 4, 5)
       if (visible && !document.hidden) renderer.render(scene, cam)
       if (!still) raf = requestAnimationFrame(draw)
     }
