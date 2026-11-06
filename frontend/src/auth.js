@@ -21,3 +21,5 @@ const auth = p => (email, password) =>
   api(p, { method: 'POST', body: { email, password } }).then(d => { setToken(d.token); return d })
 export const signup = auth('/auth/signup')
 export const login = auth('/auth/login')
+export const googleLogin = idToken =>
+  api('/auth/google', { method: 'POST', body: { idToken } }).then(d => { setToken(d.token); return d })
