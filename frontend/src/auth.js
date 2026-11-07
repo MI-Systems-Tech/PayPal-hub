@@ -13,7 +13,7 @@ export async function api(path, { method = 'GET', body } = {}) {
   catch { throw new Error('Cannot reach the server. Try again.') }
   if (r.status === 204) return null
   const d = await r.json().catch(() => ({}))
-  if (r.status === 401 && t) { clearToken(); location.assign('/login') }
+  if (r.status === 401 && t && !path.startsWith('/auth/login') && !path.startsWith('/auth/signup') && !path.startsWith('/auth/google')) { clearToken(); location.assign('/login') }
   if (!r.ok) throw new Error(d.error?.message || 'Something went wrong')
   return d
 }

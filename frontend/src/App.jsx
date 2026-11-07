@@ -4,6 +4,8 @@ import Home from './Home'
 import Login from './Login'
 import Register from './Register'
 import Hub from './Hub'
+import Discover from './Discover'
+import Checkout from './Checkout'
 
 const Guard = ({ children }) => getToken() ? children : <Navigate to="/login" replace />
 
@@ -14,6 +16,8 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/hub" element={<Guard><Hub /></Guard>} />
+      <Route path="/discover" element={<Guard><Discover /></Guard>} />
+      <Route path="/checkout/:id" element={<Guard><Checkout /></Guard>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
