@@ -14,7 +14,7 @@ function Hero() {
   }
   return (
     <header className="hero">
-      <video ref={v} src="/videos/hub.mp4" autoPlay={!still} loop muted playsInline />
+      <video ref={v} src="/videos/hub2.mp4" poster="/videos/poster.jpg" preload="metadata" autoPlay={!still} loop muted playsInline />
       <div className="hero-in">
         <h1>PayPal Hub</h1>
         <p>Find it. Pay with PayPal. Let the <span className="grad">Guardian</span> watch your subscriptions.</p>

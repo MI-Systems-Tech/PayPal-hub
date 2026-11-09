@@ -37,7 +37,7 @@ export default function AuthForm({ mode }) {
           <p className="au-o">{reg ? <>Already have an account? <Link to="/login">Sign in</Link></> : <>New to PayPal Hub? <Link to="/register">Create an account</Link></>}</p>
         </form>
       </section>
-      <aside className="au-r"><video src="/videos/hub.mp4" autoPlay={!still} loop muted playsInline /></aside>
+      <aside className="au-r"><video src="/videos/hub2.mp4" poster="/videos/poster.jpg" preload="metadata" autoPlay={!still} loop muted playsInline /></aside>
     </main>
   )
 }

@@ -32,7 +32,7 @@ export default function PinnedScroll() {
     <section className="pinned-container" ref={containerRef} style={{ height: '400vh' }}>
       <div className="sticky-viewport">
         <div className="video-wrapper" style={{ transform: `scale(${vScale})`, opacity: vOp, transition: 'transform 0.1s, opacity 0.1s' }}>
-          <video src="/videos/hub.mp4" autoPlay loop muted playsInline />
+          <video src="/videos/hub2.mp4" poster="/videos/poster.jpg" preload="metadata" autoPlay loop muted playsInline />
         </div>
         <div className="choreography-content">
           <h2 style={{ opacity: mainOpacity, transition: 'opacity 0.5s' }} className="hero-headline">One big, powerful family.</h2>

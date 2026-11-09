@@ -25,7 +25,7 @@ export default function PinnedZoom({ still }) {
   return (
     <section className="pz" ref={sec}>
       <div className="pz-s">
-        <video src="/videos/hub.mp4" autoPlay={!still} loop muted playsInline />
+        <video src="/videos/hub2.mp4" poster="/videos/poster.jpg" preload="metadata" autoPlay={!still} loop muted playsInline />
         <div className="pz-m"><span ref={txt}>Discover. Pay. Guard.</span></div>
         <div className="pz-t">
           {LINES.map((t, k) => <p key={k} className={k === i ? 'on' : k < i ? 'off' : ''}>{t}</p>)}
