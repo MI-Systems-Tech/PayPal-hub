@@ -36,7 +36,7 @@ export default function Hub() {
 
   const handleRemove = (id, name) => {
     const confirmed = window.confirm(
-      `Remove ${name} from your sample tracker? This will not cancel the provider subscription or stop billing.`
+      `Remove ${name} from your PayPal Hub tracker?\n\nThis only removes the entry from PayPal Hub. It does not cancel the subscription with the provider or stop future charges. To stop billing, cancel directly with the service provider.`
     );
     if (confirmed) setSubs(removeSub(id));
   };
