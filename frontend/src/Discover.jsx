@@ -230,64 +230,101 @@ const COUNTRIES = [
   "Other",
 ];
 
-function matchesQuery(item, query) {
-  const text = query.toLowerCase().trim();
-  if (!text) return true;
+const SEARCH_STOP_WORDS = new Set([
+  "the", "and", "for", "with", "under", "want", "need", "looking",
+  "find", "that", "this", "from", "preferably", "please", "something",
+  "like", "using", "have", "a", "an", "to", "of", "my", "me", "i",
+  "it", "is", "are", "can", "could", "would", "should", "in", "on",
+  "at", "by", "or", "about", "your", "you", "use", "used",
+  "affordable", "cheap", "cheaper", "best", "budget", "low",
+  "cost", "price", "pricing", "free", "monthly", "annual",
+  "available", "availability", "country", "payment", "paypal"
+]);
 
-  const terms = item.terms.join(" ").toLowerCase();
-  const category = item.category.toLowerCase();
-  const description = item.description.toLowerCase();
-  const title = item.title.toLowerCase();
+const SEARCH_ALIASES = {
+  freelance: [
+    "freelance", "freelancer", "freelancing", "hire", "hiring",
+    "virtual assistant", "independent professional", "contractor",
+    "freelance writer", "freelance developer", "gig", "client project",
+    "upwork", "fiverr"
+  ],
+  design: [
+    "design", "graphic", "graphics", "graphic design", "logo", "poster",
+    "social media", "social media content", "reels", "reel", "video editing",
+    "video editor", "editing", "thumbnail", "presentation", "visual content",
+    "creative assets", "canva", "adobe"
+  ],
+  learning: [
+    "learn", "learning", "course", "courses", "online course",
+    "online courses", "education", "study", "training", "certificate",
+    "certification", "university", "skill development", "udemy", "coursera"
+  ],
+  music: [
+    "music", "music streaming", "song", "songs", "playlist", "playlists",
+    "audio", "podcast", "podcasts", "listen", "spotify", "deezer"
+  ],
+  marketplace: [
+    "marketplace", "shopping", "shop", "buy", "sell", "selling",
+    "handmade", "vintage", "ecommerce", "e commerce", "online store",
+    "products", "resale", "ebay", "etsy"
+  ],
+  video: [
+    "video streaming", "streaming service", "movie", "movies", "film",
+    "films", "television", "tv", "series", "entertainment", "watch",
+    "stream shows", "netflix", "disney"
+  ]
+};
 
-  const words = text
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .split(/\s+/)
-    .filter((word) => word.length > 2);
-
-  const stopWords = [
-    "the",
-    "and",
-    "for",
-    "with",
-    "under",
-    "want",
-    "need",
-    "looking",
-    "find",
-    "that",
-    "this",
-    "from",
-    "preferably",
-    "affordable",
-    "cheap",
-    "best",
-    "available",
-    "country",
-    "please",
-    "something",
-    "like",
-    "using",
-    "have",
-  ];
-
-  const usefulWords = words.filter((word) => !stopWords.includes(word));
-
-  if (
-    usefulWords.some(
-      (word) =>
-        terms.includes(word) ||
-        category.includes(word) ||
-        description.includes(word) ||
-        title.includes(word)
-    )
-  )
-    return true;
-
-  return item.providers.some((provider) =>
-    usefulWords.some((word) => provider.name.toLowerCase().includes(word))
-  );
+function normalizeSearchText(value) {
+  return value
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
+function containsSearchPhrase(text, phrase) {
+  const target = normalizeSearchText(phrase);
+  return target.length > 0 && (` ${text} `).includes(` ${target} `);
+}
+
+function scoreComparison(item, query) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return 0;
+
+  const aliases = SEARCH_ALIASES[item.id] || [];
+  let score = 0;
+
+  for (const alias of aliases) {
+    if (containsSearchPhrase(normalizedQuery, alias)) {
+      score += alias.includes(" ") ? 4 : 2;
+    }
+  }
+
+  for (const provider of item.providers) {
+    if (containsSearchPhrase(normalizedQuery, provider.name)) {
+      score += 8;
+    }
+  }
+
+  const searchableTerms = [
+    item.category,
+    item.title,
+    ...item.terms
+  ].map(normalizeSearchText);
+
+  const queryWords = normalizedQuery
+    .split(" ")
+    .filter(word => word.length > 2 && !SEARCH_STOP_WORDS.has(word));
+
+  for (const word of new Set(queryWords)) {
+    if (searchableTerms.some(term => containsSearchPhrase(term, word))) {
+      score += 1;
+    }
+  }
+
+  return score;
+}
 export default function Discover() {
   const [query, setQuery] = useState("");
   const [searched, setSearched] = useState(false);
@@ -295,7 +332,18 @@ export default function Discover() {
 
   const results = useMemo(() => {
     if (!searched || !query.trim()) return COMPARISONS;
-    return COMPARISONS.filter((item) => matchesQuery(item, query));
+
+    return COMPARISONS
+      .map((item, index) => ({
+        ...item,
+        searchScore: scoreComparison(item, query),
+        originalOrder: index
+      }))
+      .filter((item) => item.searchScore >= 3)
+      .sort((a, b) =>
+        b.searchScore - a.searchScore ||
+        a.originalOrder - b.originalOrder
+      );
   }, [searched, query]);
 
   const submitSearch = (event) => {
