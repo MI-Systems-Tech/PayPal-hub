@@ -18,6 +18,7 @@ const SEED = [
 ]
 export const getSubs = () => g('hub_subs', SEED)
 export const markUsed = id => { const n = getSubs().map(x => x.id === id ? { ...x, days: 0 } : x); s('hub_subs', n); return n }
+export const removeSub = id => { const n = getSubs().filter(x => x.id !== id); s("hub_subs", n); return n }
 export function verdict(sub, budget) {
   if (sub.days >= 30) return { v: 'Cancel', why: `Not used in ${sub.days} days.` }
   if (sub.price > budget * 0.4) return { v: 'Review', why: 'Takes a large share of your budget.' }
@@ -33,10 +34,11 @@ export const CATALOG = [
   { id: 'c7', name: 'NoteNest', tags: ['notes', 'writing', 'docs', 'productivity'], price: 2500, pp: true, why: 'Notes and docs that sync across devices.' },
   { id: 'c8', name: 'ShieldNet', tags: ['vpn', 'privacy', 'security'], price: 3500, pp: true, why: 'VPN with servers close to Lagos.' }
 ]
+const INTENTS = { video: ["video", "editing", "editor", "film", "reels", "social media", "content creation"], design: ["design", "graphics", "logo", "poster", "branding"], cloud: ["cloud", "storage", "backup", "files"], music: ["music", "streaming", "songs", "audio"], learning: ["learning", "course", "courses", "study", "education"], notes: ["notes", "writing", "docs", "productivity"], vpn: ["vpn", "privacy", "security"] };
 export function discover(q) {
   const t = q.toLowerCase(), m = t.match(/(\d[\d,]*)\s*(k)?/)
   const cap = m ? parseInt(m[1].replace(/,/g, ''), 10) * (m[2] ? 1000 : 1) : null
-  const words = t.split(/[^a-z]+/).filter(w => w.length > 2)
+  const words = [...new Set([...t.split(/[^a-z]+/), ...Object.entries(INTENTS).filter(([key, terms]) => terms.some(term => t.includes(term))).map(([key]) => key)])].filter(w => w.length > 2)
   return CATALOG.map(c => {
     const hit = words.filter(w => c.tags.some(x => x.startsWith(w) || w.startsWith(x))).length
     const ok = cap === null || c.price <= cap
