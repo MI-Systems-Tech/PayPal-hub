@@ -1,11 +1,55 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getCat, usd, demoPay } from "./mock";
+import { getCat, demoPay } from "./mock";
 
-const N = (n) => "₦" + n.toLocaleString("en-NG");
+const CURRENCIES = [
+  { code: "NGN", label: "Nigerian naira (NGN)" },
+  { code: "USD", label: "US dollar (USD)" },
+  { code: "GBP", label: "British pound (GBP)" },
+  { code: "EUR", label: "Euro (EUR)" },
+  { code: "CAD", label: "Canadian dollar (CAD)" },
+  { code: "GHS", label: "Ghanaian cedi (GHS)" },
+  { code: "ZAR", label: "South African rand (ZAR)" },
+  { code: "KES", label: "Kenyan shilling (KES)" },
+  { code: "INR", label: "Indian rupee (INR)" },
+];
+
+const COUNTRIES = [
+  "Nigeria",
+  "United States",
+  "United Kingdom",
+  "Canada",
+  "Ghana",
+  "South Africa",
+  "Kenya",
+  "India",
+  "Other",
+];
+
+const SYMBOLS = {
+  NGN: "₦",
+  USD: "$",
+  GBP: "£",
+  EUR: "€",
+  CAD: "CA$",
+  GHS: "GH₵",
+  ZAR: "R",
+  KES: "KSh",
+  INR: "₹",
+};
+
+function formatAmount(amount, currency) {
+  return `${SYMBOLS[currency] || currency + " "}${Number(amount).toLocaleString(
+    "en-US"
+  )}`;
+}
 
 export default function Checkout() {
-  const c = getCat(useParams().id);
+  const { id } = useParams();
+  const c = getCat(id);
+
+  const [currency, setCurrency] = useState("NGN");
+  const [country, setCountry] = useState("Nigeria");
   const [order, setOrder] = useState(null);
 
   if (!c) {
@@ -42,61 +86,103 @@ export default function Checkout() {
 
       <section className="checkout-page">
         <div className="checkout-heading">
-          <p className="ledger-kicker">PAYMENT REVIEW · PROTOTYPE</p>
+          <p className="ledger-kicker">PAYMENT REVIEW · DEMO</p>
           <h1>
-            {order ? "Demo transaction recorded." : "Review your selection."}
+            {order
+              ? "Demo transaction recorded."
+              : "Review before you proceed."}
           </h1>
           <p>
             {order
-              ? "Your sample transaction has been recorded in this browser."
-              : "Check the service and pricing before continuing."}
+              ? "Your simulated transaction has been saved in this browser."
+              : "Review the sample service and your payment preferences."}
           </p>
         </div>
 
         <div className="checkout-layout">
           <section className="checkout-main">
             <p className="ledger-kicker">SELECTED SERVICE</p>
+
             <div className="checkout-service">
               <div>
                 <h2>{c.name}</h2>
-                <p>Recurring service · Monthly plan</p>
+                <p>Illustrative sample service · Not a live provider listing</p>
               </div>
               <strong>
-                {N(c.price)}
-                <small> / month</small>
+                {formatAmount(c.price, "NGN")}
+                <small> sample amount</small>
               </strong>
             </div>
 
             <div className="checkout-details">
               <div>
-                <span>Monthly price</span>
-                <strong>{N(c.price)}</strong>
+                <span>Sample catalogue amount</span>
+                <strong>{formatAmount(c.price, "NGN")}</strong>
               </div>
               <div>
-                <span>Illustrative USD equivalent</span>
-                <strong>≈ ${usd(c.price)}</strong>
-              </div>
-              <div>
-                <span>Exchange-rate assumption</span>
-                <strong>₦1,329 / USD</strong>
+                <span>Selected display currency</span>
+                <strong>{currency}</strong>
               </div>
             </div>
 
+            <div className="checkout-preferences">
+              <label htmlFor="checkout-currency">
+                DISPLAY CURRENCY
+                <select
+                  id="checkout-currency"
+                  value={currency}
+                  onChange={(event) => setCurrency(event.target.value)}
+                >
+                  {CURRENCIES.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label htmlFor="checkout-country">
+                COUNTRY WHERE YOU WILL PAY
+                <select
+                  id="checkout-country"
+                  value={country}
+                  onChange={(event) => setCountry(event.target.value)}
+                >
+                  {COUNTRIES.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
             <p className="checkout-rate-note">
-              The exchange rate is a fixed sample value in this prototype, dated
-              10 October 2026. It is not a live conversion or a confirmed PayPal
-              exchange rate.
+              The sample catalogue amount is stored in NGN. Changing the display
+              currency does not convert the amount. Live exchange rates,
+              provider prices and PayPal conversion rates are not connected.
+              Your currency choice is independent of your Google account.
             </p>
+
+            <div className="checkout-payment-check">
+              <p className="ledger-kicker">PAYMENT AVAILABILITY</p>
+              <h3>Check the provider's checkout for {country}</h3>
+              <p>
+                Payment methods may differ by country, account, subscription
+                plan and provider. This prototype cannot confirm PayPal
+                availability for your selected country.
+              </p>
+            </div>
 
             {!order ? (
               <div className="checkout-confirm">
                 <p>
-                  Confirming below records a simulated purchase and adds this
-                  service to your sample subscription list. No money will be
-                  taken.
+                  This action records a simulated transaction and adds the
+                  sample service to your local subscription tracker. No payment
+                  will be initiated.
                 </p>
                 <button onClick={() => setOrder(demoPay(c))}>
-                  Confirm demo transaction
+                  Record demo transaction
                 </button>
               </div>
             ) : (
@@ -119,15 +205,17 @@ export default function Checkout() {
           </section>
 
           <aside className="checkout-aside">
-            <p className="ledger-kicker">IMPORTANT</p>
-            <h2>This is a payment simulation.</h2>
+            <p className="ledger-kicker">IMPORTANT INFORMATION</p>
+            <h2>This is not a live payment.</h2>
             <p>
-              This prototype does not connect to PayPal checkout or initiate a
-              real recurring billing agreement.
+              PayPal checkout and provider billing are not connected to this
+              prototype.
             </p>
             <ul>
               <li>No money is charged.</li>
-              <li>No real subscription is created with the provider.</li>
+              <li>No real subscription is created.</li>
+              <li>No recurring billing agreement is established.</li>
+              <li>No provider cancellation is performed.</li>
               <li>The sample record is stored in this browser.</li>
             </ul>
             <Link to="/discover" className="checkout-back">
