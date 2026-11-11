@@ -367,6 +367,7 @@ export default function Discover() {
           <Link className="active" to="/discover">
             Discover
           </Link>
+          <Link to="/checkout/c1">Checkout demo</Link>
         </nav>
       </header>
 

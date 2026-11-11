@@ -81,6 +81,7 @@ export default function Checkout() {
         <nav className="hb-nav">
           <Link to="/hub">Overview</Link>
           <Link to="/discover">Discover</Link>
+          <Link className="active" to="/checkout/c1">Checkout demo</Link>
         </nav>
       </header>
 

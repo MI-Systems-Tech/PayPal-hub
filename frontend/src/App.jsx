@@ -17,6 +17,7 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/hub" element={<Guard><Hub /></Guard>} />
       <Route path="/discover" element={<Guard><Discover /></Guard>} />
+      <Route path="/checkout" element={<Navigate to="/checkout/c1" replace />} />
       <Route path="/checkout/:id" element={<Guard><Checkout /></Guard>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

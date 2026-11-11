@@ -76,6 +76,7 @@ export default function Hub() {
             Overview
           </Link>
           <Link to="/discover">Discover</Link>
+          <Link to="/checkout/c1">Checkout demo</Link>
         </nav>
 
         <div className="hb-account">
