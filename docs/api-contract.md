@@ -5,6 +5,8 @@ Base URL (local): http://localhost:4000
 
 All request and response bodies are JSON. Send `Content-Type: application/json` on POST requests.
 
+Allowed frontend origin: `https://paypal-hub.vercel.app` (and `http://localhost:3000` for local development).
+
 ## Error format
 
 Every error uses this shape:
@@ -163,6 +165,8 @@ Return URLs after PayPal approval or cancel:
 
 All routes need `Authorization: Bearer <token>`. Subscriptions are saved under the signed-in user, so each user sees only their own.
 
+Each subscription is identified by its `subscription_id`, which is also the `id` to use in the Guardian review.
+
 ### POST /paypal/subscriptions
 
 Starts a subscription. Send the buyer to `approve_url`. Status is `APPROVAL_PENDING` until the buyer approves.
@@ -304,6 +308,26 @@ Response 200:
 `decision` is `keep`, `cancel`, or `review`. A subscription may have no recommendation. Converted amounts are estimates from a daily rate.
 
 Errors: 400 VALIDATION_ERROR (including an unsupported currency), 500 CONFIG_ERROR, 502 FX_ERROR, 502 AI_ERROR
+
+---
+
+## Frontend map
+
+This table shows which backend route each screen uses.
+
+| Screen | Action | Route |
+|---|---|---|
+| Login | Firebase sign-in, then exchange the ID token | `POST /auth/google` |
+| Login | Email and password | `POST /auth/login` |
+| Session check | Load the signed-in user on page open | `GET /auth/me` |
+| Checkout | Pay button | `POST /paypal/orders`, then send the buyer to `approve_url` |
+| Payment approved | Return page | `POST /paypal/orders/:id/capture` |
+| Subscribe | Start a subscription, with the service name | `POST /paypal/subscriptions` |
+| Subscription approved | Return page | `GET /paypal/subscriptions/:id` |
+| Overview ledger | Load subscriptions | `GET /paypal/subscriptions` |
+| Mark as used | Reset the last-used date | `POST /paypal/subscriptions/:id/used` |
+| Guardian review | Send the ledger rows and the budget | `POST /guardian/review` |
+| Discover | Search from a plain-language request | `POST /discover/search` |
 
 ---
 
