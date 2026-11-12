@@ -32,18 +32,25 @@ const money = (amount, currency) => {
 function UsageAction(params) {
   const row = params.data;
   const busy = params.context?.busyId === row.id;
-  const usedToday = row.days_since_used === 0;
+  const isPayPal = row.source === "paypal";
+  const usedToday = isPayPal && row.days_since_used === 0;
+
+  if (!isPayPal) {
+    return <span className="guardian-grid-state demo">Demo data</span>;
+  }
+
+  if (usedToday) {
+    return <span className="guardian-grid-state used">Used today ✓</span>;
+  }
 
   return (
     <button
       className="guardian-grid-action"
-      disabled={busy || usedToday || row.source !== "paypal"}
+      disabled={busy}
       onClick={() => params.context?.onMarkUsed?.(row)}
-      title={row.source !== "paypal"
-        ? "Sample data is stored locally"
-        : usedToday ? "Already marked as used today" : "Save usage date to your account"}
+      title="Save usage date to your account"
     >
-      {busy ? "Saving…" : usedToday ? "Used today ✓" : row.source === "paypal" ? "Mark as used" : "Sample"}
+      {busy ? "Saving…" : "Mark used"}
     </button>
   );
 }
@@ -96,25 +103,21 @@ function MobileSubscriptionCard({ row, busy, onMarkUsed }) {
         <p className="subscription-mobile-reason">{row.guardian_reason}</p>
       )}
 
-      <button
-        className="subscription-mobile-action"
-        type="button"
-        disabled={busy || usedToday || !isPayPal}
-        onClick={() => onMarkUsed(row)}
-        title={!isPayPal
-          ? "Sample data is stored locally"
-          : usedToday
-            ? "Already marked as used today"
-            : "Save usage date to your account"}
-      >
-        {busy
-          ? "Saving usage…"
-          : usedToday
-            ? "Used today ✓"
-            : isPayPal
-              ? "Mark as used"
-              : "Sample record"}
-      </button>
+      {isPayPal && !usedToday ? (
+        <button
+          className="subscription-mobile-action"
+          type="button"
+          disabled={busy}
+          onClick={() => onMarkUsed(row)}
+          title="Save usage date to your account"
+        >
+          {busy ? "Saving usage…" : "Mark used"}
+        </button>
+      ) : (
+        <span className={`subscription-mobile-action-state ${isPayPal ? "used" : "demo"}`}>
+          {isPayPal ? "Used today ✓" : "Demo data"}
+        </span>
+      )}
     </article>
   );
 }
@@ -364,6 +367,8 @@ export default function Hub() {
       minWidth: 122,
       sortable: false,
       filter: false,
+      cellClass: "usage-action-cell",
+      cellStyle: { display: "flex", alignItems: "center" },
       cellRenderer: UsageAction,
     },
   ];
