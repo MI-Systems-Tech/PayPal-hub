@@ -3339,11 +3339,12 @@ a {
 /* AG GRID + GUARDIAN */
 .guardian-grid-wrap {
   width: 100%;
-  height: 470px;
+  height: auto;
+  min-height: 360px;
   margin-top: 20px;
-  overflow: hidden;
-  border: 1px solid #303a49;
-  border-radius: 16px;
+  overflow: visible;
+  border: 1px solid rgba(126, 151, 180, 0.18);
+  border-radius: 14px;
   background: #10141b;
 }
 .guardian-grid-action {
@@ -3375,17 +3376,24 @@ a {
 .guardian-budget-widget {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 20px;
-  border: 1px solid #303a49;
-  border-radius: 14px;
-  background: #101923;
+  gap: 22px;
+  padding: 24px 26px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(115deg, #121d28, #101720 72%);
   color: #edf4ff;
 }
 .guardian-budget-widget > div {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
+  min-width: 0;
+  padding-right: 14px;
+  border-right: 1px solid rgba(145, 164, 188, 0.14);
+}
+.guardian-budget-widget > div:last-child {
+  padding-right: 0;
+  border-right: 0;
 }
 .guardian-budget-widget small {
   color: #9eacc0;
@@ -3412,8 +3420,9 @@ a {
   border-radius: 12px;
 }
 @media (max-width: 720px) {
-  .guardian-budget-widget { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .guardian-grid-wrap { height: 540px; }
+  .guardian-budget-widget { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
+  .guardian-budget-widget > div { padding-right: 0; border-right: 0; }
+  .guardian-grid-wrap { height: auto; min-height: 360px; }
 }
 
 /* CHECKOUT SERVICE NAME + DISCOVER PRODUCTS */
@@ -3446,48 +3455,71 @@ a {
 }
 .discover-product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 16px;
-  margin-top: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+  gap: 18px;
+  margin-top: 20px;
 }
 .discover-product-card {
+  display: flex;
+  min-width: 0;
+  min-height: 190px;
+  flex-direction: column;
   overflow: hidden;
-  border: 1px solid #303a49;
-  border-radius: 14px;
-  background: #101923;
+  border: 1px solid rgba(145, 164, 188, 0.15);
+  border-radius: 15px;
+  background: #111923;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
-.discover-product-card > img,
-.discover-product-placeholder {
+.discover-product-card:hover {
+  background: #151f2a;
+  border-color: rgba(145, 164, 188, 0.28);
+  transform: translateY(-2px);
+}
+.discover-product-card > img {
+  display: block;
   width: 100%;
-  height: 170px;
+  height: 156px;
   object-fit: contain;
-  background: #0b1119;
-}
-.discover-product-placeholder {
-  display: grid;
-  place-items: center;
-  color: #9eacc0;
-  font-size: 12px;
+  padding: 12px;
+  background: #0d141d;
+  border-bottom: 1px solid rgba(145, 164, 188, 0.12);
 }
 .discover-product-card-body {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 19px;
+}
+.discover-product-source {
+  margin: 0;
+  color: #8198b3;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
 }
 .discover-product-card-body h3 {
   margin: 0;
   font-size: 16px;
+  line-height: 1.45;
+  font-weight: 600;
 }
 .discover-product-card-body > strong {
   color: #e8f2ff;
-  font-size: 17px;
+  font-size: 16px;
+  font-weight: 600;
 }
 .discover-product-card-body a {
+  margin-top: auto;
+  padding-top: 8px;
   color: #91c5ff;
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
+}
+.discover-product-card-body a:hover {
+  color: #c5e0ff;
 }
 @media (max-width: 600px) {
   .discover-product-grid { grid-template-columns: 1fr; }

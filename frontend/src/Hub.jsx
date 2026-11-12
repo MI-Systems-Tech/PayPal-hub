@@ -232,18 +232,18 @@ export default function Hub() {
       field: "name",
       headerName: "Subscription",
       flex: 1.5,
-      minWidth: 170,
+      minWidth: 143,
     },
     {
       field: "monthly_cost",
       headerName: "Monthly cost",
-      minWidth: 145,
+      minWidth: 122,
       valueFormatter: (params) => money(params.value, params.data?.currency),
     },
     {
       field: "days_since_used",
       headerName: "Days since used",
-      minWidth: 130,
+      minWidth: 109,
       valueFormatter: (params) =>
         params.value == null ? "Not recorded" :
           params.value === 0 ? "Today" : `${params.value} days`,
@@ -251,13 +251,13 @@ export default function Hub() {
     {
       field: "status",
       headerName: "PayPal status",
-      minWidth: 145,
+      minWidth: 122,
       valueFormatter: (params) => params.value || "Sample",
     },
     {
       field: "guardian_decision",
       headerName: "Guardian",
-      minWidth: 135,
+      minWidth: 113,
       cellRenderer: (params) => (
         <span className={`guardian-decision ${String(params.value || "").toLowerCase()}`}>
           {params.value || "Not reviewed"}
@@ -267,7 +267,7 @@ export default function Hub() {
     {
       headerName: "Usage",
       field: "usage_action",
-      minWidth: 145,
+      minWidth: 122,
       sortable: false,
       filter: false,
       cellRenderer: UsageAction,
@@ -423,7 +423,7 @@ export default function Hub() {
         <section className="ledger-records">
           <div className="ledger-section-head">
             <div>
-              <p className="ledger-kicker">YOUR TRACKER · AG GRID</p>
+              <p className="ledger-kicker">YOUR TRACKER</p>
               <h2>Subscription records</h2>
               <p className="ledger-section-description">
                 Search, sort and filter your PayPal Hub records. Mark usage
@@ -451,14 +451,15 @@ export default function Hub() {
                   sortable: true,
                   filter: true,
                   resizable: true,
-                  floatingFilter: true,
+                  flex: 1,
+                  minWidth: 105,
                 }}
-                rowHeight={58}
-                headerHeight={48}
+                rowHeight={52}
+                headerHeight={44}
                 pagination
                 paginationPageSize={10}
                 animateRows
-                domLayout="normal"
+                domLayout="autoHeight"
               />
             </div>
           )}
@@ -467,10 +468,10 @@ export default function Hub() {
         <section className="ledger-guardian">
           <div className="ledger-section-head">
             <div>
-              <p className="ledger-kicker">AG STUDIO · CUSTOM BUDGET WIDGET</p>
+              <p className="ledger-kicker">YOUR BUDGET SNAPSHOT</p>
               <h2>Budget overview</h2>
               <p className="ledger-section-description">
-                A reusable PayPal Hub summary widget for your subscription dashboard.
+                A quick view of your monthly limit and tracked subscriptions.
               </p>
             </div>
           </div>

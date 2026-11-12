@@ -390,11 +390,11 @@ export default function Discover() {
   };
 
   const formatProductPrice = (price, currency) => {
-    if (price == null || price === "") return "Price unavailable";
+    if (price == null || price === "") return "";
     const amount = typeof price === "object"
       ? price.amount ?? price.value ?? price.price
       : price;
-    if (amount == null || amount === "") return "Price unavailable";
+    if (amount == null || amount === "") return "";
     const numeric = Number(amount);
     if (!Number.isFinite(numeric)) return String(amount);
     try {
@@ -530,24 +530,22 @@ export default function Discover() {
                     /^https?:\/\//i.test(item.image) ? item.image : "";
                   const productUrl = typeof item.url === "string" &&
                     /^https?:\/\//i.test(item.url) ? item.url : "";
+                  const priceLabel = formatProductPrice(item.price, item.currency);
 
                   return (
                     <article className="discover-product-card" key={`${item.name || "product"}-${index}`}>
-                      {imageUrl ? (
+                      {imageUrl && (
                         <img src={imageUrl} alt={item.name || "Product"} loading="lazy" />
-                      ) : (
-                        <div className="discover-product-placeholder">Product image unavailable</div>
                       )}
                       <div className="discover-product-card-body">
+                        <p className="discover-product-source">CHANNEL3 RESULT</p>
                         {item.brand && <p className="discover-category">{item.brand}</p>}
-                        <h3>{item.name || "Untitled product"}</h3>
-                        <strong>{formatProductPrice(item.price, item.currency)}</strong>
-                        {productUrl ? (
+                        <h3>{item.name || "Product listing"}</h3>
+                        {priceLabel && <strong>{priceLabel}</strong>}
+                        {productUrl && (
                           <a href={productUrl} target="_blank" rel="noopener noreferrer">
                             View product ↗
                           </a>
-                        ) : (
-                          <span className="ledger-method">Retailer link unavailable</span>
                         )}
                       </div>
                     </article>
