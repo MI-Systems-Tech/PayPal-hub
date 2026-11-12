@@ -3524,3 +3524,120 @@ a {
 @media (max-width: 600px) {
   .discover-product-grid { grid-template-columns: 1fr; }
 }
+
+/* MOBILE SUBSCRIPTION CARDS */
+.subscription-mobile-list {
+  display: none;
+}
+
+.subscription-mobile-card {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid rgba(145, 164, 188, 0.17);
+  border-radius: 15px;
+  background: linear-gradient(145deg, #141e29, #101720);
+}
+
+.subscription-mobile-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(145, 164, 188, 0.13);
+}
+
+.subscription-mobile-title {
+  min-width: 0;
+}
+
+.subscription-mobile-eyebrow {
+  margin: 0 0 6px;
+  color: #8198b3;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.subscription-mobile-title h3 {
+  margin: 0;
+  color: #edf4ff;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.subscription-mobile-card-head .guardian-decision {
+  flex: 0 0 auto;
+  max-width: 118px;
+  white-space: normal;
+  text-align: center;
+}
+
+.subscription-mobile-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px 12px;
+  padding: 16px 0;
+}
+
+.subscription-mobile-details > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subscription-mobile-details span {
+  color: #8f9fb3;
+  font-size: 11px;
+}
+
+.subscription-mobile-details strong {
+  color: #edf4ff;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.subscription-mobile-reason {
+  margin: 0 0 13px;
+  color: #aebbd0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.subscription-mobile-action {
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 14px;
+  border: 1px solid #376c5c;
+  border-radius: 9px;
+  background: #164b3c;
+  color: #e6fff4;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.subscription-mobile-action:disabled {
+  border-color: #354354;
+  background: #1a2635;
+  color: #95a3b5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .subscription-desktop-grid {
+    display: none;
+  }
+
+  .subscription-mobile-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 18px;
+  }
+}

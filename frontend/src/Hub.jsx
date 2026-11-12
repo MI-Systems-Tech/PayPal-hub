@@ -48,6 +48,75 @@ function UsageAction(params) {
   );
 }
 
+
+function MobileSubscriptionCard({ row, busy, onMarkUsed }) {
+  const decision = row.guardian_decision || "Not reviewed";
+  const decisionClass = String(decision).toLowerCase();
+  const usedToday = row.days_since_used === 0;
+  const isPayPal = row.source === "paypal";
+
+  return (
+    <article className="subscription-mobile-card">
+      <div className="subscription-mobile-card-head">
+        <div className="subscription-mobile-title">
+          <p className="subscription-mobile-eyebrow">
+            {isPayPal ? "PAYPAL SUBSCRIPTION" : "SAMPLE RECORD"}
+          </p>
+          <h3>{row.name || "Untitled subscription"}</h3>
+        </div>
+        <span className={`guardian-decision ${decisionClass}`}>
+          {decision}
+        </span>
+      </div>
+
+      <div className="subscription-mobile-details">
+        <div>
+          <span>Monthly cost</span>
+          <strong>{money(row.monthly_cost, row.currency)}</strong>
+        </div>
+        <div>
+          <span>Days since used</span>
+          <strong>
+            {row.days_since_used == null
+              ? "Not recorded"
+              : usedToday
+                ? "Today"
+                : `${row.days_since_used} days`}
+          </strong>
+        </div>
+        <div>
+          <span>PayPal status</span>
+          <strong>{row.status || (isPayPal ? "Not provided" : "Sample data")}</strong>
+        </div>
+      </div>
+
+      {row.guardian_reason && (
+        <p className="subscription-mobile-reason">{row.guardian_reason}</p>
+      )}
+
+      <button
+        className="subscription-mobile-action"
+        type="button"
+        disabled={busy || usedToday || !isPayPal}
+        onClick={() => onMarkUsed(row)}
+        title={!isPayPal
+          ? "Sample data is stored locally"
+          : usedToday
+            ? "Already marked as used today"
+            : "Save usage date to your account"}
+      >
+        {busy
+          ? "Saving usage…"
+          : usedToday
+            ? "Used today ✓"
+            : isPayPal
+              ? "Mark as used"
+              : "Sample record"}
+      </button>
+    </article>
+  );
+}
+
 export default function Hub() {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
@@ -440,28 +509,41 @@ export default function Hub() {
               <Link className="ledger-link" to="/checkout">Go to Checkout ↗</Link>
             </div>
           ) : (
-            <div className="guardian-grid-wrap">
-              <AgGridReact
-                theme={gridTheme}
-                rowData={rows}
-                columnDefs={columnDefs}
-                context={gridContext}
-                getRowId={(params) => String(params.data.id)}
-                defaultColDef={{
-                  sortable: true,
-                  filter: true,
-                  resizable: true,
-                  flex: 1,
-                  minWidth: 105,
-                }}
-                rowHeight={52}
-                headerHeight={44}
-                pagination
-                paginationPageSize={10}
-                animateRows
-                domLayout="autoHeight"
-              />
-            </div>
+            <>
+              <div className="guardian-grid-wrap subscription-desktop-grid">
+                <AgGridReact
+                  theme={gridTheme}
+                  rowData={rows}
+                  columnDefs={columnDefs}
+                  context={gridContext}
+                  getRowId={(params) => String(params.data.id)}
+                  defaultColDef={{
+                    sortable: true,
+                    filter: true,
+                    resizable: true,
+                    flex: 1,
+                    minWidth: 105,
+                  }}
+                  rowHeight={52}
+                  headerHeight={44}
+                  pagination
+                  paginationPageSize={10}
+                  animateRows
+                  domLayout="autoHeight"
+                />
+              </div>
+
+              <div className="subscription-mobile-list">
+                {rows.map((row) => (
+                  <MobileSubscriptionCard
+                    key={row.id}
+                    row={row}
+                    busy={busyId === row.id}
+                    onMarkUsed={handleMarkUsed}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </section>
 
