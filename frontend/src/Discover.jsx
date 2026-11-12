@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "./auth";
 
 const COMPARISONS = [
   {
@@ -329,6 +330,10 @@ export default function Discover() {
   const [query, setQuery] = useState("");
   const [searched, setSearched] = useState(false);
   const [country, setCountry] = useState("Nigeria");
+  const [products, setProducts] = useState([]);
+  const [productQuery, setProductQuery] = useState("");
+  const [productLoading, setProductLoading] = useState(false);
+  const [productError, setProductError] = useState("");
 
   const results = useMemo(() => {
     if (!searched || !query.trim()) return COMPARISONS;
@@ -346,14 +351,61 @@ export default function Discover() {
       );
   }, [searched, query]);
 
+  const runProductSearch = async (value) => {
+    const need = value.trim();
+    if (need.length < 3 || productLoading) return;
+
+    setQuery(value);
+    setSearched(true);
+    setProductLoading(true);
+    setProductError("");
+    setProducts([]);
+    setProductQuery("");
+
+    try {
+      const data = await api("/discover/search", {
+        method: "POST",
+        body: { need },
+      });
+      setProducts(Array.isArray(data.products) ? data.products : []);
+      setProductQuery(data.query || need);
+    } catch (error) {
+      setProductError(error.message || "Product search could not be completed.");
+    } finally {
+      setProductLoading(false);
+    }
+  };
+
   const submitSearch = (event) => {
     event.preventDefault();
-    setSearched(true);
+    runProductSearch(query);
   };
 
   const clearSearch = () => {
     setQuery("");
     setSearched(false);
+    setProducts([]);
+    setProductQuery("");
+    setProductError("");
+  };
+
+  const formatProductPrice = (price, currency) => {
+    if (price == null || price === "") return "Price unavailable";
+    const amount = typeof price === "object"
+      ? price.amount ?? price.value ?? price.price
+      : price;
+    if (amount == null || amount === "") return "Price unavailable";
+    const numeric = Number(amount);
+    if (!Number.isFinite(numeric)) return String(amount);
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: currency || "USD",
+        maximumFractionDigits: 2,
+      }).format(numeric);
+    } catch {
+      return `${numeric.toFixed(2)} ${currency || "USD"}`;
+    }
   };
 
   return (
@@ -390,8 +442,8 @@ export default function Discover() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="e.g. I need affordable video editing for social media reels."
             />
-            <button type="submit" disabled={!query.trim()}>
-              Find comparisons
+            <button type="submit" disabled={!query.trim() || productLoading}>
+              {productLoading ? "Searching…" : "Find products and comparisons"}
             </button>
           </div>
         </form>
@@ -428,15 +480,88 @@ export default function Discover() {
             <button
               type="button"
               key={label}
-              onClick={() => {
-                setQuery(value);
-                setSearched(true);
-              }}
+              onClick={() => runProductSearch(value)}
             >
               {label}
             </button>
           ))}
         </div>
+
+        {searched && (
+          <section className="discover-products">
+            <div className="discover-results-head">
+              <div>
+                <p className="ledger-kicker">AI-ASSISTED PRODUCT DISCOVERY</p>
+                <h2>Products matching your need</h2>
+                {productQuery && (
+                  <p className="discover-product-query">
+                    Channel3 search: {productQuery}
+                  </p>
+                )}
+              </div>
+              <span>{products.length} products</span>
+            </div>
+
+            {productLoading && (
+              <p className="ledger-method">Finding products through Channel3…</p>
+            )}
+
+            {productError && (
+              <div className="discover-empty" role="alert">
+                <h3>Product search unavailable</h3>
+                <p>{productError}</p>
+                <button type="button" onClick={() => runProductSearch(query)}>
+                  Retry product search
+                </button>
+              </div>
+            )}
+
+            {!productLoading && !productError && products.length === 0 && (
+              <div className="discover-empty">
+                <h3>No products returned for this search.</h3>
+                <p>Try a more specific product description or another search.</p>
+              </div>
+            )}
+
+            {products.length > 0 && (
+              <div className="discover-product-grid">
+                {products.map((item, index) => {
+                  const imageUrl = typeof item.image === "string" &&
+                    /^https?:\/\//i.test(item.image) ? item.image : "";
+                  const productUrl = typeof item.url === "string" &&
+                    /^https?:\/\//i.test(item.url) ? item.url : "";
+
+                  return (
+                    <article className="discover-product-card" key={`${item.name || "product"}-${index}`}>
+                      {imageUrl ? (
+                        <img src={imageUrl} alt={item.name || "Product"} loading="lazy" />
+                      ) : (
+                        <div className="discover-product-placeholder">Product image unavailable</div>
+                      )}
+                      <div className="discover-product-card-body">
+                        {item.brand && <p className="discover-category">{item.brand}</p>}
+                        <h3>{item.name || "Untitled product"}</h3>
+                        <strong>{formatProductPrice(item.price, item.currency)}</strong>
+                        {productUrl ? (
+                          <a href={productUrl} target="_blank" rel="noopener noreferrer">
+                            View product ↗
+                          </a>
+                        ) : (
+                          <span className="ledger-method">Retailer link unavailable</span>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+            <p className="discover-footnote">
+              Product information is supplied by Channel3. Prices, images and
+              retailer links may be missing or change; confirm details with
+              the seller before purchasing.
+            </p>
+          </section>
+        )}
 
         <section className="discover-results">
           <div className="discover-results-head">

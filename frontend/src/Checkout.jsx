@@ -1,223 +1,170 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getCat, demoPay } from "./mock";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { api } from "./auth";
+import {
+  setPendingOrder,
+  setPendingSubscription,
+  getPendingOrderId,
+  getPendingSubscriptionId,
+  clearPendingOrder,
+  clearPendingSubscription,
+  updatePayPalSubscription,
+} from "./paypal";
 
-const CURRENCIES = [
-  { code: "NGN", label: "Nigerian naira (NGN)" },
-  { code: "USD", label: "US dollar (USD)" },
-  { code: "GBP", label: "British pound (GBP)" },
-  { code: "EUR", label: "Euro (EUR)" },
-  { code: "CAD", label: "Canadian dollar (CAD)" },
-  { code: "GHS", label: "Ghanaian cedi (GHS)" },
-  { code: "ZAR", label: "South African rand (ZAR)" },
-  { code: "KES", label: "Kenyan shilling (KES)" },
-  { code: "INR", label: "Indian rupee (INR)" },
-];
+const ONE_TIME_AMOUNT = "5.00";
 
-const COUNTRIES = [
-  "Nigeria",
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Ghana",
-  "South Africa",
-  "Kenya",
-  "India",
-  "Other",
-];
-
-const SYMBOLS = {
-  NGN: "₦",
-  USD: "$",
-  GBP: "£",
-  EUR: "€",
-  CAD: "CA$",
-  GHS: "GH₵",
-  ZAR: "R",
-  KES: "KSh",
-  INR: "₹",
-};
-
-function formatAmount(amount, currency) {
-  return `${SYMBOLS[currency] || currency + " "}${Number(amount).toLocaleString(
-    "en-US"
-  )}`;
+function PayPalHeader() {
+  return (
+    <header className="hb-top ledger-top">
+      <Link className="hb-brand" to="/hub">
+        PayPal Hub<span>.</span>
+      </Link>
+      <nav className="hb-nav">
+        <Link to="/hub">Overview</Link>
+        <Link to="/discover">Discover</Link>
+        <Link className="active" to="/checkout/c1">Checkout</Link>
+      </nav>
+    </header>
+  );
 }
 
 export default function Checkout() {
-  const { id } = useParams();
-  const c = getCat(id);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [serviceName, setServiceName] = useState("");
 
-  const [currency, setCurrency] = useState("NGN");
-  const [country, setCountry] = useState("Nigeria");
-  const [order, setOrder] = useState(null);
+  const startOneTimePayment = async () => {
+    setBusy("payment");
+    setError("");
+    try {
+      const result = await api("/paypal/orders", {
+        method: "POST",
+        body: { amount: ONE_TIME_AMOUNT },
+      });
 
-  if (!c) {
-    return (
-      <main className="hb ledger-page">
-        <header className="hb-top ledger-top">
-          <Link className="hb-brand" to="/hub">
-            PayPal Hub<span>.</span>
-          </Link>
-        </header>
-        <section className="checkout-page">
-          <p className="ledger-kicker">CHECKOUT</p>
-          <h1>Service not found</h1>
-          <p>This service is not in the current sample catalogue.</p>
-          <Link className="checkout-back" to="/discover">
-            Return to Discover ↗
-          </Link>
-        </section>
-      </main>
-    );
-  }
+      if (!result.order_id || !result.approve_url) {
+        throw new Error("PayPal did not return an approval link. Please try again.");
+      }
+
+      setPendingOrder(result.order_id);
+      window.location.assign(result.approve_url);
+    } catch (err) {
+      setError(err.message || "Could not start the PayPal payment.");
+      setBusy("");
+    }
+  };
+
+  const startGuardianSubscription = async () => {
+    setBusy("subscription");
+    setError("");
+    try {
+      const result = await api("/paypal/subscriptions", {
+        method: "POST",
+        body: { name: serviceName.trim() },
+      });
+
+      if (!result.subscription_id || !result.approve_url) {
+        throw new Error("PayPal did not return an approval link. Please try again.");
+      }
+
+      setPendingSubscription(result.subscription_id);
+      window.location.assign(result.approve_url);
+    } catch (err) {
+      setError(err.message || "Could not start the PayPal subscription.");
+      setBusy("");
+    }
+  };
 
   return (
     <main className="hb ledger-page">
-      <header className="hb-top ledger-top">
-        <Link className="hb-brand" to="/hub">
-          PayPal Hub<span>.</span>
-        </Link>
-        <nav className="hb-nav">
-          <Link to="/hub">Overview</Link>
-          <Link to="/discover">Discover</Link>
-          <Link className="active" to="/checkout/c1">Checkout demo</Link>
-        </nav>
-      </header>
+      <PayPalHeader />
 
       <section className="checkout-page">
         <div className="checkout-heading">
-          <p className="ledger-kicker">PAYMENT REVIEW · DEMO</p>
-          <h1>
-            {order
-              ? "Demo transaction recorded."
-              : "Review before you proceed."}
-          </h1>
+          <p className="ledger-kicker">PAYPAL CHECKOUT</p>
+          <h1>Choose how to proceed.</h1>
           <p>
-            {order
-              ? "Your simulated transaction has been saved in this browser."
-              : "Review the sample service and your payment preferences."}
+            These are the two payment flows currently configured by the
+            PayPal Hub backend. Both require approval on PayPal.
           </p>
         </div>
 
         <div className="checkout-layout">
-          <section className="checkout-main">
-            <p className="ledger-kicker">SELECTED SERVICE</p>
-
-            <div className="checkout-service">
-              <div>
-                <h2>{c.name}</h2>
-                <p>Illustrative sample service · Not a live provider listing</p>
-              </div>
-              <strong>
-                {formatAmount(c.price, "NGN")}
-                <small> sample amount</small>
-              </strong>
-            </div>
-
-            <div className="checkout-details">
-              <div>
-                <span>Sample catalogue amount</span>
-                <strong>{formatAmount(c.price, "NGN")}</strong>
-              </div>
-              <div>
-                <span>Selected display currency</span>
-                <strong>{currency}</strong>
-              </div>
-            </div>
-
-            <div className="checkout-preferences">
-              <label htmlFor="checkout-currency">
-                DISPLAY CURRENCY
-                <select
-                  id="checkout-currency"
-                  value={currency}
-                  onChange={(event) => setCurrency(event.target.value)}
-                >
-                  {CURRENCIES.map((item) => (
-                    <option key={item.code} value={item.code}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label htmlFor="checkout-country">
-                COUNTRY WHERE YOU WILL PAY
-                <select
-                  id="checkout-country"
-                  value={country}
-                  onChange={(event) => setCountry(event.target.value)}
-                >
-                  {COUNTRIES.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <p className="checkout-rate-note">
-              The sample catalogue amount is stored in NGN. Changing the display
-              currency does not convert the amount. Live exchange rates,
-              provider prices and PayPal conversion rates are not connected.
-              Your currency choice is independent of your Google account.
-            </p>
-
-            <div className="checkout-payment-check">
-              <p className="ledger-kicker">PAYMENT AVAILABILITY</p>
-              <h3>Check the provider's checkout for {country}</h3>
-              <p>
-                Payment methods may differ by country, account, subscription
-                plan and provider. This prototype cannot confirm PayPal
-                availability for your selected country.
-              </p>
-            </div>
-
-            {!order ? (
-              <div className="checkout-confirm">
-                <p>
-                  This action records a simulated transaction and adds the
-                  sample service to your local subscription tracker. No payment
-                  will be initiated.
-                </p>
-                <button onClick={() => setOrder(demoPay(c))}>
-                  Record demo transaction
-                </button>
-              </div>
-            ) : (
-              <div className="checkout-success">
-                <p className="ledger-kicker">DEMO RESULT</p>
-                <h2>Transaction recorded</h2>
-                <div className="checkout-reference">
-                  <span>Demo reference</span>
-                  <strong>{order.ref}</strong>
+          <section className="checkout-main paypal-flow-main">
+            <article className="paypal-flow-option">
+              <div className="paypal-flow-option-head">
+                <div>
+                  <p className="ledger-kicker">ONE-TIME PAYMENT</p>
+                  <h2>Sandbox payment test</h2>
                 </div>
-                <p>
-                  {c.name} has been added to your sample subscription list. No
-                  PayPal payment was initiated and nothing was charged.
-                </p>
-                <Link className="checkout-primary-link" to="/hub">
-                  View subscription ledger ↗
-                </Link>
+                <strong className="paypal-flow-price">$5.00 <small>USD</small></strong>
               </div>
+              <p>
+                Create a one-time PayPal order, approve it on PayPal, and
+                return to Hub to capture the payment.
+              </p>
+              <button
+                className="paypal-flow-button"
+                onClick={startOneTimePayment}
+                disabled={Boolean(busy)}
+              >
+                {busy === "payment" ? "Connecting to PayPal…" : "Continue to PayPal"}
+              </button>
+            </article>
+
+            <article className="paypal-flow-option">
+              <div className="paypal-flow-option-head">
+                <div>
+                  <p className="ledger-kicker">RECURRING SUBSCRIPTION</p>
+                  <h2>Guardian Monthly</h2>
+                </div>
+                <strong className="paypal-flow-price">
+                  $10.00 <small>USD / month</small>
+                </strong>
+              </div>
+              <label className="checkout-service-label" htmlFor="paypal-service-name">
+                SERVICE YOU WANT TO TRACK
+              </label>
+              <input
+                id="paypal-service-name"
+                className="checkout-service-input"
+                value={serviceName}
+                onChange={(event) => setServiceName(event.target.value)}
+                maxLength={80}
+                autoComplete="off"
+                placeholder="e.g. Netflix, Spotify, Canva"
+                required
+              />
+              <p>
+                Enter the service name. PayPal Hub will save it with your
+                subscription after creation. The subscription becomes active
+                only after PayPal approval is verified.
+              </p>
+              <button
+                className="paypal-flow-button"
+                onClick={startGuardianSubscription}
+                disabled={Boolean(busy) || !serviceName.trim()}
+              >
+                {busy === "subscription" ? "Connecting to PayPal…" : "Subscribe with PayPal"}
+              </button>
+            </article>
+
+            {error && (
+              <p className="paypal-flow-alert" role="alert">
+                {error}
+              </p>
             )}
           </section>
 
           <aside className="checkout-aside">
-            <p className="ledger-kicker">IMPORTANT INFORMATION</p>
-            <h2>This is not a live payment.</h2>
-            <p>
-              PayPal checkout and provider billing are not connected to this
-              prototype.
-            </p>
+            <p className="ledger-kicker">BEFORE YOU CONTINUE</p>
+            <h2>Payment details</h2>
             <ul>
-              <li>No money is charged.</li>
-              <li>No real subscription is created.</li>
-              <li>No recurring billing agreement is established.</li>
-              <li>No provider cancellation is performed.</li>
-              <li>The sample record is stored in this browser.</li>
+              <li>PayPal handles the approval step.</li>
+              <li>The one-time test amount is $5.00 USD.</li>
+              <li>Guardian Monthly is a recurring $10.00 USD plan.</li>
+              <li>Hub verifies the result after PayPal returns you.</li>
+              <li>These backend test flows do not purchase services from the Discover catalogue.</li>
             </ul>
             <Link to="/discover" className="checkout-back">
               ← Back to Discover
@@ -229,6 +176,166 @@ export default function Checkout() {
           <span>PayPal Hub · Subscription clarity.</span>
           <span>Hackathon prototype · Not affiliated with PayPal.</span>
         </footer>
+      </section>
+    </main>
+  );
+}
+
+export function PayPalReturn({ kind, outcome }) {
+  const location = useLocation();
+  const [state, setState] = useState(
+    outcome === "cancelled" ? "cancelled" : "checking"
+  );
+  const [message, setMessage] = useState("");
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+
+    if (outcome === "cancelled") {
+      if (kind === "payment") clearPendingOrder();
+      if (kind === "subscription") clearPendingSubscription();
+      setState("cancelled");
+      setMessage("");
+      return () => {
+        active = false;
+      };
+    }
+
+    const verify = async () => {
+      setState("checking");
+      setMessage("");
+
+      try {
+        const params = new URLSearchParams(location.search);
+
+        if (kind === "payment") {
+          const orderId =
+            params.get("token") ||
+            params.get("order_id") ||
+            getPendingOrderId();
+
+          if (!orderId) {
+            throw new Error("The PayPal order ID was not found. Return to Checkout and try again.");
+          }
+
+          const result = await api(
+            `/paypal/orders/${encodeURIComponent(orderId)}/capture`,
+            { method: "POST" }
+          );
+
+          if (!active) return;
+
+          if (result.status === "COMPLETED") {
+            clearPendingOrder();
+            setState("success");
+            setMessage("PayPal confirmed that the payment was completed.");
+          } else {
+            setState("pending");
+            setMessage(`PayPal returned status: ${result.status || "unknown"}. Payment is not confirmed as completed.`);
+          }
+          return;
+        }
+
+        const subscriptionId =
+          params.get("subscription_id") ||
+          getPendingSubscriptionId();
+
+        if (!subscriptionId) {
+          throw new Error("The PayPal subscription ID was not found. Return to Checkout and try again.");
+        }
+
+        const result = await api(
+          `/paypal/subscriptions/${encodeURIComponent(subscriptionId)}`
+        );
+
+        if (!active) return;
+
+        updatePayPalSubscription(subscriptionId, {
+          status: result.status,
+          plan_id: result.plan_id || null,
+          next_billing_time: result.next_billing_time || null,
+          verified_at: new Date().toISOString(),
+        });
+
+        if (result.status === "ACTIVE") {
+          clearPendingSubscription();
+          setState("success");
+          setMessage("PayPal confirmed that Guardian Monthly is active.");
+        } else {
+          setState("pending");
+          setMessage(`PayPal returned status: ${result.status || "unknown"}. The subscription is not yet confirmed as active.`);
+        }
+      } catch (err) {
+        if (!active) return;
+        setState("failed");
+        setMessage(err.message || "We could not verify the PayPal result.");
+      }
+    };
+
+    verify();
+
+    return () => {
+      active = false;
+    };
+  }, [kind, outcome, location.search, attempt]);
+
+  const isPayment = kind === "payment";
+  const title =
+    state === "checking" ? "Verifying with PayPal…" :
+    state === "success" ? (isPayment ? "Payment completed" : "Subscription active") :
+    state === "pending" ? "Approval not yet confirmed" :
+    state === "cancelled" ? "You cancelled the approval" :
+    "We could not verify the result";
+
+  return (
+    <main className="hb ledger-page">
+      <PayPalHeader />
+      <section className="checkout-page paypal-return-page">
+        <div className="paypal-return-content">
+          <p className="ledger-kicker">
+            {isPayment ? "ONE-TIME PAYMENT" : "GUARDIAN SUBSCRIPTION"}
+          </p>
+          <h1>{title}</h1>
+
+          {state === "checking" && (
+            <p>Checking the transaction with the PayPal backend.</p>
+          )}
+
+          {message && <p role={state === "failed" ? "alert" : "status"}>{message}</p>}
+
+          {state === "cancelled" && (
+            <p>
+              PayPal approval was cancelled. Hub has not recorded a successful
+              payment or confirmed an active subscription.
+            </p>
+          )}
+
+          {state === "pending" && (
+            <p>
+              No completed payment or active subscription will be shown until
+              PayPal confirms the relevant status.
+            </p>
+          )}
+
+          {state === "failed" && (
+            <button
+              className="paypal-flow-button"
+              onClick={() => setAttempt((value) => value + 1)}
+            >
+              Retry verification
+            </button>
+          )}
+
+          <div className="paypal-return-links">
+            <Link className="checkout-primary-link" to="/hub">
+              Go to Overview ↗
+            </Link>
+            <Link className="checkout-back" to="/checkout">
+              Return to Checkout
+            </Link>
+          </div>
+        </div>
       </section>
     </main>
   );
