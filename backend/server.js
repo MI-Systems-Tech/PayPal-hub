@@ -175,6 +175,7 @@ app.post("/auth/logout", requireAuth, (req, res) => {
 
 require("./paypal")(app, requireAuth);
 require("./paypal-orders")(app, requireAuth);
+require("./guardian")(app, requireAuth);
 
 // Malformed JSON, and any unexpected server error
 app.use((err, req, res, next) => {
