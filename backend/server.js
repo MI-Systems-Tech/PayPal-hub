@@ -173,6 +173,9 @@ app.post("/auth/logout", requireAuth, (req, res) => {
   res.status(204).end();
 });
 
+require("./paypal")(app, requireAuth);
+require("./paypal-orders")(app, requireAuth);
+
 // Malformed JSON, and any unexpected server error
 app.use((err, req, res, next) => {
   if (err.type === "entity.parse.failed") {
