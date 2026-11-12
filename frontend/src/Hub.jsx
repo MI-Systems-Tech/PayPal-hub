@@ -51,7 +51,9 @@ function UsageAction(params) {
 
 function MobileSubscriptionCard({ row, busy, onMarkUsed }) {
   const decision = row.guardian_decision || "Not reviewed";
-  const decisionClass = String(decision).toLowerCase();
+  const decisionClass = String(decision).toLowerCase() === "not reviewed"
+    ? "pending"
+    : String(decision).toLowerCase();
   const usedToday = row.days_since_used === 0;
   const isPayPal = row.source === "paypal";
 
@@ -130,6 +132,7 @@ export default function Hub() {
   const [guardianResults, setGuardianResults] = useState({});
   const [guardianMeta, setGuardianMeta] = useState(null);
   const [busyId, setBusyId] = useState("");
+  const [recordSearch, setRecordSearch] = useState("");
 
   useEffect(() => {
     api("/auth/me")
@@ -198,6 +201,22 @@ export default function Hub() {
     guardian_decision: guardianResults[row.id]?.decision || "Not reviewed",
     guardian_reason: guardianResults[row.id]?.reason || "",
   }));
+
+  const searchTerm = recordSearch.trim().toLowerCase();
+  const filteredRows = rows.filter((row) => {
+    if (!searchTerm) return true;
+    const searchable = [
+      row.name,
+      row.currency,
+      row.status,
+      row.guardian_decision,
+      row.guardian_reason,
+      row.days_since_used,
+      row.source === "paypal" ? "PayPal subscription" : "sample record",
+      money(row.monthly_cost, row.currency),
+    ].join(" ").toLowerCase();
+    return searchable.includes(searchTerm);
+  });
 
   const reviewable = rows.filter((row) =>
     typeof row.name === "string" &&
@@ -327,11 +346,17 @@ export default function Hub() {
       field: "guardian_decision",
       headerName: "Guardian",
       minWidth: 113,
-      cellRenderer: (params) => (
-        <span className={`guardian-decision ${String(params.value || "").toLowerCase()}`}>
-          {params.value || "Not reviewed"}
-        </span>
-      ),
+      cellRenderer: (params) => {
+        const value = params.value || "Not reviewed";
+        const state = String(value).toLowerCase() === "not reviewed"
+          ? "pending"
+          : String(value).toLowerCase();
+        return (
+          <span className={`guardian-decision ${state}`}>
+            {value}
+          </span>
+        );
+      },
     },
     {
       headerName: "Usage",
@@ -510,39 +535,73 @@ export default function Hub() {
             </div>
           ) : (
             <>
-              <div className="guardian-grid-wrap subscription-desktop-grid">
-                <AgGridReact
-                  theme={gridTheme}
-                  rowData={rows}
-                  columnDefs={columnDefs}
-                  context={gridContext}
-                  getRowId={(params) => String(params.data.id)}
-                  defaultColDef={{
-                    sortable: true,
-                    filter: true,
-                    resizable: true,
-                    flex: 1,
-                    minWidth: 105,
-                  }}
-                  rowHeight={52}
-                  headerHeight={44}
-                  pagination
-                  paginationPageSize={10}
-                  animateRows
-                  domLayout="autoHeight"
-                />
+              <div className="subscription-tools">
+                <label className="subscription-search-box" htmlFor="subscription-record-search">
+                  <span aria-hidden="true">⌕</span>
+                  <input
+                    id="subscription-record-search"
+                    type="search"
+                    value={recordSearch}
+                    onChange={(event) => setRecordSearch(event.target.value)}
+                    placeholder="Search subscriptions, status or Guardian decision"
+                  />
+                  {recordSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setRecordSearch("")}
+                      aria-label="Clear subscription search"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </label>
+                <span className="subscription-search-count">
+                  {filteredRows.length} shown
+                </span>
               </div>
 
-              <div className="subscription-mobile-list">
-                {rows.map((row) => (
-                  <MobileSubscriptionCard
-                    key={row.id}
-                    row={row}
-                    busy={busyId === row.id}
-                    onMarkUsed={handleMarkUsed}
-                  />
-                ))}
-              </div>
+              {filteredRows.length === 0 ? (
+                <div className="ledger-empty subscription-no-match">
+                  <h3>No matching subscriptions.</h3>
+                  <p>Try another service name, status or Guardian decision.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="guardian-grid-wrap subscription-desktop-grid">
+                    <AgGridReact
+                      theme={gridTheme}
+                      rowData={filteredRows}
+                      columnDefs={columnDefs}
+                      context={gridContext}
+                      getRowId={(params) => String(params.data.id)}
+                      defaultColDef={{
+                        sortable: true,
+                        filter: false,
+                        resizable: false,
+                        flex: 1,
+                        minWidth: 105,
+                      }}
+                      rowHeight={52}
+                      headerHeight={44}
+                      pagination
+                      paginationPageSize={10}
+                      animateRows
+                      domLayout="autoHeight"
+                    />
+                  </div>
+
+                  <div className="subscription-mobile-list">
+                    {filteredRows.map((row) => (
+                      <MobileSubscriptionCard
+                        key={row.id}
+                        row={row}
+                        busy={busyId === row.id}
+                        onMarkUsed={handleMarkUsed}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </section>

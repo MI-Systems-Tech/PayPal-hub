@@ -3364,11 +3364,21 @@ a {
 .guardian-decision {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   border: 1px solid #3b4859;
-  border-radius: 999px;
-  padding: 5px 10px;
+  border-radius: 7px;
+  padding: 4px 8px;
   text-transform: capitalize;
-  font-size: 12px;
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 700;
+  white-space: nowrap;
+  background: rgba(120, 143, 170, 0.07);
+}
+.guardian-decision.pending {
+  color: #aab8ca;
+  border-color: rgba(140, 160, 185, 0.24);
+  background: rgba(120, 143, 170, 0.08);
 }
 .guardian-decision.keep { color: #9ee3bd; border-color: #286746; }
 .guardian-decision.cancel { color: #ffb0a9; border-color: #82423e; }
@@ -3639,5 +3649,87 @@ a {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     margin-top: 18px;
+  }
+}
+
+
+/* SUBSCRIPTION RECORDS TOOLBAR */
+.subscription-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 12px;
+}
+
+.subscription-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(440px, 100%);
+  min-height: 43px;
+  padding: 0 12px;
+  border: 1px solid rgba(145, 164, 188, 0.2);
+  border-radius: 9px;
+  background: #101720;
+  color: #91a4ba;
+}
+
+.subscription-search-box:focus-within {
+  border-color: #638db7;
+  box-shadow: 0 0 0 3px rgba(99, 141, 183, 0.1);
+}
+
+.subscription-search-box > span {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.subscription-search-box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #edf4ff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.subscription-search-box input::placeholder {
+  color: #7f8da0;
+}
+
+.subscription-search-box button {
+  border: 0;
+  background: transparent;
+  color: #91c5ff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.subscription-search-count {
+  flex: 0 0 auto;
+  color: #8797aa;
+  font-size: 11px;
+}
+
+.subscription-no-match {
+  margin-top: 14px;
+  border: 1px solid rgba(145, 164, 188, 0.14);
+  border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+  .subscription-tools {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .subscription-search-box {
+    width: 100%;
   }
 }
