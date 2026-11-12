@@ -1,3 +1,5 @@
+const { getFirestore } = require("firebase-admin/firestore");
+
 const BASE =
   process.env.PAYPAL_ENV === "live"
     ? "https://api-m.paypal.com"
@@ -5,6 +7,7 @@ const BASE =
 
 let cachedToken = null;
 let tokenExpiresAt = 0;
+const planPriceCache = new Map();
 
 async function getAccessToken() {
   if (cachedToken && Date.now() < tokenExpiresAt) return cachedToken;
@@ -48,10 +51,39 @@ function paypalError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
 }
 
+const subscriptionsRef = () => getFirestore().collection("subscriptions");
+
+// The price comes from the PayPal plan, so it stays correct if the plan changes.
+async function getPlanPrice(planId) {
+  if (planPriceCache.has(planId)) return planPriceCache.get(planId);
+  const plan = await paypalRequest("GET", `/v1/billing/plans/${encodeURIComponent(planId)}`);
+  if (!plan.ok) return null;
+  const fixed = plan.data?.billing_cycles?.[0]?.pricing_scheme?.fixed_price;
+  const price = fixed ? { amount: fixed.value, currency: fixed.currency_code } : null;
+  planPriceCache.set(planId, price);
+  return price;
+}
+
+async function loadSubscription(subscriptionId) {
+  const sub = await paypalRequest(
+    "GET",
+    `/v1/billing/subscriptions/${encodeURIComponent(subscriptionId)}`
+  );
+  if (!sub.ok) return null;
+  const price = await getPlanPrice(sub.data.plan_id);
+  return {
+    subscription_id: sub.data.id,
+    status: sub.data.status,
+    plan_id: sub.data.plan_id,
+    plan_amount: price?.amount ?? null,
+    currency: price?.currency ?? null,
+    next_billing_time: sub.data.billing_info?.next_billing_time ?? null,
+  };
+}
+
 // Mounted from server.js. requireAuth is passed in so these routes need a login token.
 module.exports = function registerPayPalRoutes(app, requireAuth) {
   // Run once. Creates a product and a monthly plan, then returns the plan id.
-  // Copy the plan_id into backend/.env as PAYPAL_PLAN_ID.
   app.post("/paypal/setup", requireAuth, async (req, res) => {
     const product = await paypalRequest("POST", "/v1/catalogs/products", {
       name: "PayPal Hub Guardian",
@@ -90,51 +122,75 @@ module.exports = function registerPayPalRoutes(app, requireAuth) {
     res.status(201).json({ product_id: product.data.id, plan_id: plan.data.id });
   });
 
-  // Starts a subscription and returns the URL the buyer must approve.
-  app.post("/paypal/subscriptions", requireAuth, async (req, res) => {
-    if (!process.env.PAYPAL_PLAN_ID) {
-      return paypalError(res, 500, "CONFIG_ERROR", "PAYPAL_PLAN_ID is not set.");
-    }
+  // Starts a subscription and saves it under the signed-in user.
+  app.post("/paypal/subscriptions", requireAuth, async (req, res, next) => {
+    try {
+      if (!process.env.PAYPAL_PLAN_ID) {
+        return paypalError(res, 500, "CONFIG_ERROR", "PAYPAL_PLAN_ID is not set.");
+      }
 
-    const sub = await paypalRequest("POST", "/v1/billing/subscriptions", {
-      plan_id: process.env.PAYPAL_PLAN_ID,
-      application_context: {
-        brand_name: "PayPal Hub",
-        user_action: "SUBSCRIBE_NOW",
-        return_url: "https://paypal-hub.vercel.app/subscription/approved",
-        cancel_url: "https://paypal-hub.vercel.app/subscription/cancelled",
-      },
-    });
-    if (!sub.ok) {
-      return paypalError(res, 502, "PAYPAL_ERROR", "Could not create subscription.");
-    }
+      const sub = await paypalRequest("POST", "/v1/billing/subscriptions", {
+        plan_id: process.env.PAYPAL_PLAN_ID,
+        application_context: {
+          brand_name: "PayPal Hub",
+          user_action: "SUBSCRIBE_NOW",
+          return_url: "https://paypal-hub.vercel.app/subscription/approved",
+          cancel_url: "https://paypal-hub.vercel.app/subscription/cancelled",
+        },
+      });
+      if (!sub.ok) {
+        return paypalError(res, 502, "PAYPAL_ERROR", "Could not create subscription.");
+      }
 
-    const approve = sub.data.links.find((l) => l.rel === "approve");
-    res.status(201).json({
-      subscription_id: sub.data.id,
-      status: sub.data.status,
-      approve_url: approve ? approve.href : null,
-    });
+      await subscriptionsRef().doc(sub.data.id).set({
+        subscriptionId: sub.data.id,
+        userId: req.user.id,
+        planId: process.env.PAYPAL_PLAN_ID,
+        createdAt: new Date().toISOString(),
+      });
+
+      const approve = sub.data.links.find((l) => l.rel === "approve");
+      res.status(201).json({
+        subscription_id: sub.data.id,
+        status: sub.data.status,
+        approve_url: approve ? approve.href : null,
+      });
+    } catch (err) {
+      next(err);
+    }
   });
 
-  // Checks a subscription's status after the buyer has approved it.
-  app.get("/paypal/subscriptions/:id", requireAuth, async (req, res) => {
-    const sub = await paypalRequest(
-      "GET",
-      `/v1/billing/subscriptions/${encodeURIComponent(req.params.id)}`
-    );
-    if (sub.status === 404) {
-      return paypalError(res, 404, "NOT_FOUND", "Subscription not found.");
+  // Lists the signed-in user's subscriptions created through PayPal Hub.
+  app.get("/paypal/subscriptions", requireAuth, async (req, res, next) => {
+    try {
+      const snap = await subscriptionsRef()
+        .where("userId", "==", req.user.id)
+        .limit(20)
+        .get();
+      const subscriptions = (
+        await Promise.all(snap.docs.map((doc) => loadSubscription(doc.id)))
+      ).filter(Boolean);
+      res.json({ subscriptions });
+    } catch (err) {
+      next(err);
     }
-    if (!sub.ok) {
-      return paypalError(res, 502, "PAYPAL_ERROR", "Could not fetch subscription.");
-    }
+  });
 
-    res.json({
-      subscription_id: sub.data.id,
-      status: sub.data.status,
-      plan_id: sub.data.plan_id,
-      next_billing_time: sub.data.billing_info?.next_billing_time ?? null,
-    });
+  // Returns one subscription, only if the signed-in user owns it.
+  app.get("/paypal/subscriptions/:id", requireAuth, async (req, res, next) => {
+    try {
+      const doc = await subscriptionsRef().doc(req.params.id).get();
+      if (!doc.exists || doc.data().userId !== req.user.id) {
+        return paypalError(res, 404, "NOT_FOUND", "Subscription not found.");
+      }
+
+      const sub = await loadSubscription(req.params.id);
+      if (!sub) {
+        return paypalError(res, 502, "PAYPAL_ERROR", "Could not fetch subscription.");
+      }
+      res.json(sub);
+    } catch (err) {
+      next(err);
+    }
   });
 };

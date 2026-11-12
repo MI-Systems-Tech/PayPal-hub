@@ -18,11 +18,14 @@ Every error uses this shape:
 | 401 | INVALID_CREDENTIALS | Wrong email or password |
 | 401 | INVALID_GOOGLE_TOKEN | Firebase ID token could not be verified |
 | 401 | UNVERIFIED_EMAIL | Google account email is not verified |
-| 404 | NOT_FOUND | Subscription does not exist |
+| 404 | NOT_FOUND | Subscription does not exist, or belongs to another user |
 | 409 | EMAIL_TAKEN | An account with this email already exists |
-| 500 | CONFIG_ERROR | Server is missing required configuration, such as the plan ID |
+| 500 | CONFIG_ERROR | Server is missing required configuration |
 | 500 | INTERNAL_ERROR | Unexpected server error |
 | 502 | PAYPAL_ERROR | PayPal rejected or failed the request |
+| 502 | FX_ERROR | Exchange rates could not be loaded |
+| 502 | AI_ERROR | The AI service could not complete the review |
+| 502 | DISCOVER_ERROR | Product search failed |
 
 ## Tokens
 
@@ -158,11 +161,11 @@ Return URLs after PayPal approval or cancel:
 
 ## PayPal: subscriptions
 
-Both routes need `Authorization: Bearer <token>`. Subscriptions use the plan configured on the server.
+All routes need `Authorization: Bearer <token>`. Subscriptions are saved under the signed-in user, so each user sees only their own.
 
 ### POST /paypal/subscriptions
 
-Starts a subscription. Send the buyer to `approve_url` to agree on PayPal. Status is `APPROVAL_PENDING` until the buyer approves.
+Starts a subscription. Send the buyer to `approve_url`. Status is `APPROVAL_PENDING` until the buyer approves.
 
 Request: no body.
 
@@ -176,9 +179,34 @@ Response 201:
 
 Errors: 401 UNAUTHORIZED, 500 CONFIG_ERROR, 502 PAYPAL_ERROR
 
+Return URLs after PayPal approval or cancel:
+- `https://paypal-hub.vercel.app/subscription/approved`
+- `https://paypal-hub.vercel.app/subscription/cancelled`
+
+### GET /paypal/subscriptions
+
+Lists the user's subscriptions created through PayPal Hub, up to 20.
+
+Response 200:
+
+    {
+      "subscriptions": [
+        {
+          "subscription_id": "I-LSW6XBWXUPEK",
+          "status": "ACTIVE",
+          "plan_id": "P-949397489C7034449NL2ST5Q",
+          "plan_amount": "10.00",
+          "currency": "USD",
+          "next_billing_time": "2026-12-11T..."
+        }
+      ]
+    }
+
+Errors: 401 UNAUTHORIZED, 502 PAYPAL_ERROR
+
 ### GET /paypal/subscriptions/:id
 
-Checks a subscription's status. Call this after the buyer returns, and show success when `status` is `ACTIVE`.
+Returns one subscription the user owns. If it doesn't exist or belongs to another user, the response is 404. Use this after the buyer returns, and show success when `status` is `ACTIVE`.
 
 Response 200:
 
@@ -186,14 +214,88 @@ Response 200:
       "subscription_id": "I-LSW6XBWXUPEK",
       "status": "ACTIVE",
       "plan_id": "P-949397489C7034449NL2ST5Q",
+      "plan_amount": "10.00",
+      "currency": "USD",
       "next_billing_time": "2026-12-11T..."
     }
 
+`plan_amount` and `currency` come from the PayPal plan. Possible `status` values include `APPROVAL_PENDING`, `ACTIVE`, `SUSPENDED`, `CANCELLED`, and `EXPIRED`.
+
 Errors: 401 UNAUTHORIZED, 404 NOT_FOUND, 502 PAYPAL_ERROR
 
-Return URLs after PayPal approval or cancel:
-- `https://paypal-hub.vercel.app/subscription/approved`
-- `https://paypal-hub.vercel.app/subscription/cancelled`
+---
+
+## Discover
+
+### POST /discover/search
+
+Turns a plain-language request into a product search, then returns matching products from Channel3. Uses AI to build the search query.
+
+Request:
+
+    { "need": "wireless headphones under 100 dollars" }
+
+Rules: `need` is a string of at least 3 characters.
+
+Response 200:
+
+    {
+      "query": "wireless headphones",
+      "products": [
+        {
+          "name": "Example Wireless Headphones",
+          "brand": "Example",
+          "price": 89.99,
+          "currency": "USD",
+          "url": "https://retailer.example/product",
+          "image": "https://retailer.example/image.jpg"
+        }
+      ]
+    }
+
+Up to 10 products. Any field can be `null` if the retailer doesn't provide it, so the frontend should handle missing values. The `query` is the search the AI built, so the frontend can show it to the user.
+
+Errors: 400 VALIDATION_ERROR, 500 CONFIG_ERROR, 502 DISCOVER_ERROR
+
+---
+
+## Guardian
+
+### POST /guardian/review
+
+Reviews subscriptions against the user's monthly budget. Each amount can be in any supported currency. The server converts everything to USD before the review, using daily exchange rates, so all amounts are compared fairly.
+
+Request:
+
+    {
+      "budget": { "amount": 50000, "currency": "NGN" },
+      "subscriptions": [
+        { "id": "row-1", "name": "Video streaming", "monthly_cost": 15, "currency": "USD", "days_since_used": 3 },
+        { "id": "row-2", "name": "Design tool", "monthly_cost": 20000, "currency": "NGN", "days_since_used": 40 }
+      ]
+    }
+
+Validation rules:
+- `budget.amount`: number, 0 or more. `budget.currency`: 3-letter ISO code, such as `NGN` or `USD`.
+- `subscriptions`: 1 to 50 items.
+- Each `id`: non-empty string, unique within the request. It is returned with its recommendation.
+- Each `monthly_cost`: number, 0 or more. Each `currency`: 3-letter ISO code.
+- Each `days_since_used`: number, 0 or more.
+
+Response 200:
+
+    {
+      "budget_usd": 33.33,
+      "rates_updated": "Thu, 12 Nov 2026 00:00:01 +0000",
+      "attribution": "Exchange rates by ExchangeRate-API (https://www.exchangerate-api.com)",
+      "recommendations": [
+        { "id": "row-2", "name": "Design tool", "decision": "cancel", "reason": "Costly for the budget and unused for 40 days." }
+      ]
+    }
+
+`decision` is `keep`, `cancel`, or `review`. A subscription may have no recommendation. Converted amounts are estimates from a daily rate.
+
+Errors: 400 VALIDATION_ERROR (including an unsupported currency), 500 CONFIG_ERROR, 502 FX_ERROR, 502 AI_ERROR
 
 ---
 
